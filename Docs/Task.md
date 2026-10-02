@@ -1,25 +1,25 @@
 # TASK.md — CBT Exam Simulator Build Checklist
 
 > Companion to `PROJECT.md`. Tick each item as you complete it.
-> Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
+> Legend: `[ ]` todo · `[~]` in progress · `[☑️]` done · `[!]` blocked
 
 ---
 
 ## 🕐 Hour 0 — Repo & Environment Setup
 
 ### Repo
-- [ ] Create GitHub repo `cbt-app`
-- [ ] Add `PROJECT.md`, `TASK.md`, `README.md` to root
-- [ ] Add `.gitignore` (Python + Node + env + media + `__pycache__`)
+- [☑️] Create GitHub repo `cbt-app`
+- [☑️] Add `PROJECT.md`, `TASK.md`, `README.md` to root
+- [☑️] Add `.gitignore` (Python + Node + env + media + `__pycache__`)
 - [ ] Add `.editorconfig` (2-space for TS, 4-space for Python)
 - [ ] First commit: `chore: initial scaffold`
 
 ### Local Env
-- [ ] Install Python 3.12
-- [ ] Install Node 20 LTS
-- [ ] Install Docker Desktop
-- [ ] Install PostgreSQL 16 (or use Docker)
-- [ ] Verify `psql --version`, `python --version`, `node --version`
+- [☑️] Install Python 3.12
+- [☑️] Install Node 20 LTS
+- [☑️] Install Podman
+- [☑️] Install PostgreSQL 16 (or use Podman)
+- [☑️] Verify `psql --version`, `python --version`, `node --version`
 
 ### Monorepo Layout
 - [ ] Create `backend/` and `frontend/` folders
@@ -32,12 +32,12 @@
 ## 🕐 Hour 0–1 — Backend Scaffold (Django + DRF + Postgres)
 
 ### Install & Init
-- [ ] `python -m venv venv && source venv/bin/activate`
-- [ ] `pip install django djangorestframework djangorestframework-simplejwt psycopg2-binary python-decouple pdfplumber django-cors-headers gunicorn whitenoise`
-- [ ] `pip freeze > backend/requirements.txt`
-- [ ] `django-admin startproject core backend`
-- [ ] `cd backend && python manage.py startapp accounts`
-- [ ] `python manage.py startapp exams`
+- [☑️] `python -m venv venv && source venv/bin/activate`
+- [☑️] `pip install django djangorestframework djangorestframework-simplejwt psycopg2-binary python-decouple pdfplumber django-cors-headers gunicorn whitenoise`
+- [☑️] `pip freeze > backend/requirements.txt`
+- [☑️] `django-admin startproject core backend`
+- [☑️] `cd backend && python manage.py startapp accounts`
+- [☑️] `python manage.py startapp exams`
 
 ### Settings (`core/settings.py`)
 - [ ] Load `.env` via `python-decouple`
