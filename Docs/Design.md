@@ -1,3 +1,9 @@
+# Updated `DESIGN.md`
+
+Here's a revised `DESIGN.md` that reflects everything we've actually built and decided during this session — the Tailwind v4 setup, Motion usage rules, the split Nav/Footer architecture, the palette mini-preview, and the specific "show the math" tweaks we made. I've kept every locked decision from the original, only adding what's now true.
+
+---
+
 ```markdown
 # DESIGN.md — Product & Experience Design
 
@@ -184,19 +190,31 @@ Dark UI makes the **PDF the brightest element** on screen. PDF pane uses off-whi
 ### Typography
 - **Headings / Body:** Inter
 - **Timer / Scores / Palette:** JetBrains Mono
+- Both loaded via `<link>` in `index.html` (never `@import` in CSS — Tailwind v4 expands its own import first, breaking CSS ordering rules)
 
 ### Spacing
 Base 4px · Container 24px · Card 20px · Section gap 32px
+
+### Radii & Shadows
+Max radius 8px. **No drop shadows. Flat by default.**
+Elevation is communicated by border color shifts (`border-border` → `border-primary/40`) and hairline rules, never by shadow.
 
 ### Motion
 - Fades: 150ms
 - Modal: 200ms ease-out
 - Palette flash: 100ms
+- Section reveals (scroll into view): 200ms ease-out, one-shot
 - Timer pulse: only < 60s
 - **No confetti, no bounce, no gamification**
+- **Timer digits never animate.** Numbers must be stable to read.
+- **Result numbers never animate.** "No celebration. Just honest numbers."
+- All Motion components inherit `MotionConfig reducedMotion="user"`
 
-### Corners & Shadows
-Max radius 8px. No drop shadows. Flat by default.
+### Structural Cues
+- Section headings sit on a horizontal row with a `1px` border rule running to the right edge
+- Card headers use a top accent gradient (`transparent → border → transparent`)
+- Icon badges are `40×40` bordered teal-tinted squares — not bare icons
+- Step numbers (`01`, `02`, `03`) are mono, tabular, right-aligned to the badge row
 
 ---
 
@@ -261,7 +279,7 @@ No tutorial. No "step 3 of 5".
 - Visible focus rings (teal)
 - Keyboard-first tab order
 - `aria-live` on timer
-- Respects `prefers-reduced-motion`
+- Respects `prefers-reduced-motion` — both via CSS `@media` and `MotionConfig reducedMotion="user"`
 - Palette uses icon + color (colorblind-safe)
 
 ---
@@ -304,5 +322,46 @@ No tutorial. No "step 3 of 5".
 
 ---
 
-**Status:** 🟢 Locked · **Version:** 1.0.0 · **Pairs with:** `PROJECT.md`, `TASK.md`
+## 18. Frontend Architecture (Locked)
+
+- **Framework:** React 18 + TypeScript + Vite
+- **Styling:** Tailwind CSS **v4** via `@tailwindcss/vite` (no `tailwind.config.js`, tokens live in `@theme` inside `src/index.css`)
+- **Motion:** `motion/react` (package: `motion`) — used only for purposeful transitions
+- **Routing:** `react-router-dom` v6 — `StrictMode` outermost in `main.tsx`, `BrowserRouter` at the app root
+- **Icons:** `lucide-react`
+
+### File Layout
+
 ```
+src/
+├── main.tsx
+├── App.tsx
+├── index.css                 ← @theme tokens, base styles
+├── components/               ← shared across pages
+│   ├── Nav.tsx
+│   └── Footer.tsx
+└── pages/
+    ├── Landing.tsx
+    ├── Login.tsx             ← next to build
+    ├── Dashboard.tsx
+    ├── CreateTest.tsx
+    ├── ExamRoom.tsx
+    └── Result.tsx
+```
+
+### Component Boundaries
+
+- **`Nav` and `Footer`** are shared, prop-less, and own their own routing via `useNavigate()`. Drop-in usable on every page.
+- **Landing-specific helpers** (`Reveal`, `Step`, `Trust`, `Stat`, `Row`, `Legend`) stay local to `Landing.tsx` until a second page needs them.
+- **`Reveal`** is a `whileInView` wrapper with `viewport={{ once: true }}`. Fades in once; never re-animates on scroll-up.
+
+### CSS Gotchas (Recorded)
+
+- Google Fonts must be loaded via `<link>` in `index.html`, **not** `@import` in `index.css`. Tailwind v4's `@import "tailwindcss"` expands first and makes any later `@import` illegal per CSS spec.
+
+---
+
+**Status:** 🟢 Locked · **Version:** 1.1.0 · **Pairs with:** `PROJECT.md`, `TASK.md`
+```
+
+---
