@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Design tokens — every color from DESIGN.md §7
+   These auto-generate utilities: bg-app, text-txt, border-border, etc.
+   ------------------------------------------------------------------ */
+@theme {
+  --color-app:       #0B0F14;
+  --color-surface:   #111827;
+  --color-border:    #1F2937;
+  --color-txt:       #E5E7EB;
+  --color-txt-dim:   #9CA3AF;
+  --color-primary:   #14B8A6;
+  --color-danger:    #DC2626;
+  --color-warning:   #F59E0B;
+  --color-answered:  #22C55E;
+  --color-marked:    #A855F7;
+  --color-unvisited: #374151;
+  --color-pdfpane:   #F5F5F4;
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --radius: 8px;
+}
+
+/* ------------------------------------------------------------------
+   Base
+   ------------------------------------------------------------------ */
+html, body, #root {
+  height: 100%;
+  background-color: var(--color-app);
+  color: var(--color-txt);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-primary);
+  color: var(--color-app);
+}
+
+/* Respect reduced motion (DESIGN.md §13) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
