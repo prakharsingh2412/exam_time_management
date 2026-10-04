@@ -3,6 +3,9 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import CreateTest from "./pages/CreateTest";
+import ExamRoom from "./pages/ExamRoom";
+import Result from "./pages/Result";
 import { auth } from "./api/api";
 
 /** Props for {@link RequireAuth}. */
@@ -36,6 +39,30 @@ export default function App() {
         element={
           <RequireAuth>
             <Dashboard />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/create"
+        element={
+          <RequireAuth>
+            <CreateTest />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/exam/:attemptId"
+        element={
+          <RequireAuth>
+            <ExamRoom />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/result/:attemptId"
+        element={
+          <RequireAuth>
+            <Result />
           </RequireAuth>
         }
       />
