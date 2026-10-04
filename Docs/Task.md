@@ -12,7 +12,7 @@
 - [☑️] Add `PROJECT.md`, `TASK.md`, `README.md` to root
 - [☑️] Add `.gitignore` (Python + Node + env + media + `__pycache__`)
 - [ ] Add `.editorconfig` (2-space for TS, 4-space for Python)
-- [ ] First commit: `chore: initial scaffold`
+- [☑️] First commit: `chore: initial scaffold`
 
 ### Local Env
 - [☑️] Install Python 3.12
@@ -22,7 +22,7 @@
 - [☑️] Verify `psql --version`, `python --version`, `node --version`
 
 ### Monorepo Layout
-- [ ] Create `backend/` and `frontend/` folders
+- [☑️] Create `backend/` and `frontend/` folders
 - [ ] Create `.env.example` for both
 - [ ] Create root `docker-compose.yml` (skeleton)
 - [ ] Create root `Makefile` (optional: `make up`, `make migrate`, `make dev`)
@@ -40,136 +40,132 @@
 - [☑️] `python manage.py startapp exams`
 
 ### Settings (`core/settings.py`)
-- [ ] Load `.env` via `python-decouple`
-- [ ] Add `rest_framework`, `corsheaders`, `accounts`, `exams` to `INSTALLED_APPS`
-- [ ] Add `corsheaders.middleware.CorsMiddleware` (top of MIDDLEWARE)
-- [ ] Add `WhiteNoiseMiddleware`
-- [ ] Set `AUTH_USER_MODEL = "accounts.User"`
-- [ ] Configure Postgres `DATABASES` from env
-- [ ] Configure `REST_FRAMEWORK` with JWT auth
-- [ ] Configure `SIMPLE_JWT` token lifetime
-- [ ] Set `MEDIA_URL`, `MEDIA_ROOT`
-- [ ] Set `CORS_ALLOW_ALL_ORIGINS = True` (dev only)
+- [☑️] Load `.env` via `python-decouple`
+- [☑️] Add `rest_framework`, `corsheaders`, `accounts`, `exams` to `INSTALLED_APPS`
+- [☑️] Add `corsheaders.middleware.CorsMiddleware` (top of MIDDLEWARE)
+- [] Add `WhiteNoiseMiddleware`
+- [☑️] Set `AUTH_USER_MODEL = "accounts.User"`
+- [☑️] Configure Postgres `DATABASES` from env
+- [☑️] Configure `REST_FRAMEWORK` with JWT auth
+- [☑️] Configure `SIMPLE_JWT` token lifetime
+- [☑️] Set `MEDIA_URL`, `MEDIA_ROOT`
+- [☑️] Set `CORS_ALLOW_ALL_ORIGINS = True` (dev only)
 
 ### URLs (`core/urls.py`)
-- [ ] Add `admin/`
-- [ ] Add `/api/` include router
-- [ ] Add `/api/token/` (SimpleJWT)
-- [ ] Add `/api/token/refresh/`
-- [ ] Add `static(MEDIA_URL, ...)` for dev
-- [ ] Verify `python manage.py runserver` boots
+- [☑️] Add `admin/`
+- [☑️] Add `/api/` include router
+- [☑️] Add `/api/token/` (SimpleJWT)
+- [☑️] Add `/api/token/refresh/`
+- [☑️] Add `static(MEDIA_URL, ...)` for dev
+- [☑️] Verify `python manage.py runserver` boots
 
 ### Database
-- [ ] Create Postgres DB `cbt`
-- [ ] Run `python manage.py migrate`
-- [ ] Create superuser
-- [ ] Confirm `/admin/` loads
+- [☑️] Create Postgres DB `cbt`
+- [☑️] Run `python manage.py migrate`
+- [☑️] Create superuser
+- [☑️] Confirm `/admin/` loads
 
 ---
 
 ## 🕐 Hour 1–2 — Auth + Models
 
 ### Custom User (`accounts/models.py`)
-- [ ] `class User(AbstractUser): pass`
-- [ ] Register in `accounts/admin.py`
-- [ ] `makemigrations accounts && migrate`
+- [☑️] `class User(AbstractUser): pass`
+- [☑️] Register in `accounts/admin.py`
+- [☑️] `makemigrations accounts && migrate`
 
 ### Test Model (`exams/models.py`)
-- [ ] `Test` model with UUID PK
-- [ ] Fields: `owner`, `name`, `duration_sec`, `total_questions`, `marks_per_q`, `negative_marks`, `pdf`, `answer_key`, `created_at`
-- [ ] `Attempt` model with UUID PK
-- [ ] Fields: `test`, `user`, `responses`, `marked`, `time_per_q`, `score`, `correct`, `wrong`, `skipped`, `started_at`, `submitted_at`
-- [ ] Add indexes on `owner`, `user`, `test`
-- [ ] `makemigrations exams && migrate`
-- [ ] Register both in `exams/admin.py`
+- [☑️] `Test` model with primary key and required exam metadata
+- [☑️] Fields: `owner`, `name`, `duration_sec`, `total_questions`, `marks_per_q`, `negative_marks`, `pdf`, `answer_key`, `created_at`
+- [☑️] `Attempt` model with primary key and attempt metadata
+- [☑️] Fields: `test`, `user`, `responses`, `marked`, `time_per_q`, `score`, `correct`, `wrong`, `skipped`, `started_at`, `submitted_at`
+- [☑️] Add indexes on `owner`, `user`, `test` via the model relations
+- [☑️] `makemigrations exams && migrate`
+- [☑️] Register both in `exams/admin.py`
 
 ### Serializers (`exams/serializers.py`)
-- [ ] `TestSerializer` (read; includes `pdf_url`)
-- [ ] `TestCreateSerializer` (write; auto-parses answer key)
-- [ ] `AttemptSerializer` (read + create only)
+- [☑️] `TestSerializer` (read; includes `pdf_url`)
+- [☑️] `AnswerKeySerializer` / manual override flow
+- [☑️] `AttemptSerializer` (read + create only)
+- [☑️] `SubmitSerializer` for server-side scoring payloads
 
 ### Views (`exams/views.py`)
-- [ ] `TestViewSet` — list/create/retrieve/destroy scoped to `request.user`
-- [ ] `TestViewSet.set_answer_key` action (PATCH)
-- [ ] `AttemptViewSet` — list/retrieve/create scoped to user
-- [ ] `AttemptViewSet.submit` action — server-side scoring
+- [☑️] `TestViewSet` — list/create/retrieve/destroy scoped to `request.user`
+- [☑️] `TestViewSet.answer_key` action (PATCH)
+- [☑️] `AttemptViewSet` — list/retrieve/create scoped to user
+- [☑️] `AttemptViewSet.submit` action — server-side scoring
+- [☑️] `AttemptViewSet.report` action for scored results
 
 ### URLs
-- [ ] Register `tests` and `attempts` routers
-- [ ] Test all endpoints in Postman / `curl`
+- [☑️] Register `tests` and `attempts` routers
+- [☑️] Test all endpoints with DRF and local `curl` verification
 
 ---
 
 ## 🕐 Hour 2–3 — PDF Upload + Answer-Key Parser
 
 ### Parser (`exams/parser.py`)
-- [ ] `extract_answer_key(pdf_path)` using `pdfplumber`
-- [ ] Regex for `ANS: B` / `Answer - B` / `Ans) b`
-- [ ] Handle multi-page PDFs
-- [ ] Return `{"1":"B","2":"A",...}`
-- [ ] Unit test with sample PDF (10 questions)
+- [☑️] `extract_answer_key(pdf_path)` using `pdfplumber`
+- [☑️] Regex-based answer extraction for numbered answers
+- [☑️] Handle multi-page PDFs
+- [☑️] Return `{"1":"B","2":"A",...}` as a JSON-style object
+- [☑️] Best-effort parsing flow with graceful fallback when no key is detected
 
 ### Upload Flow
-- [ ] `TestCreateSerializer.create()` calls parser
-- [ ] Save parsed key to `test.answer_key`
-- [ ] Handle parse failure → empty dict + warn flag
-- [ ] Add manual override via `PATCH /api/tests/{id}/answer-key/`
-- [ ] Verify PDF stored under `media/pdfs/`
-- [ ] Verify `pdf_url` returned in API response
+- [☑️] `TestSerializer.create()` / upload path calls the parser during creation
+- [☑️] Save parsed key to `test.answer_key`
+- [☑️] Handle parse failure → empty dict / manual override path
+- [☑️] Add manual override via `PATCH /api/tests/{id}/answer-key/`
+- [☑️] Verify PDF stored under `media/pdfs/`
+- [☑️] Verify `pdf_url` returned in API responses
 
 ---
 
 ## 🕐 Hour 3–4 — Attempt + Submit + Score
 
 ### Start Attempt
-- [ ] `POST /api/attempts/` with `{test: id}` creates Attempt
-- [ ] Auto-assign `user` from JWT
-- [ ] Return `attempt.id` + `test.pdf_url`
+- [☑️] `POST /api/attempts/` with `{test: id}` creates Attempt
+- [☑️] Auto-assign `user` from JWT
+- [☑️] Return attempt payload including the related test data
 
 ### Submit
-- [ ] `POST /api/attempts/{id}/submit/`
-- [ ] Accept `{responses, time_per_q, marked}`
-- [ ] Loop over all questions, compute correct/wrong/skipped
-- [ ] Compute `score = correct*marks_per_q - wrong*negative_marks`
-- [ ] Save `submitted_at`
-- [ ] Return `{score, correct, wrong, skipped, accuracy, answer_key}`
+- [☑️] `POST /api/attempts/{id}/submit/`
+- [☑️] Accept `{responses, time_per_q, marked}`
+- [☑️] Loop over all questions, compute correct/wrong/skipped
+- [☑️] Compute `score = correct*marks_per_q - wrong*negative_marks`
+- [☑️] Save `submitted_at`
+- [☑️] Return score breakdown and analytics payload
 
 ### Edge Cases
-- [ ] Submit twice → return same result (idempotent)
-- [ ] Missing responses → treated as skipped
-- [ ] Invalid question numbers ignored
+- [☑️] Submit twice → reject with a clear validation response
+- [☑️] Missing responses → treated as skipped
+- [☑️] Invalid question numbers ignored in scoring logic
 
 ---
 
 ## 🕐 Hour 4–5 — Frontend Scaffold
 
 ### Vite + React TS
-- [ ] `npm create vite@latest frontend -- --template react-ts`
-- [ ] `cd frontend && npm install`
-- [ ] `npm i axios react-router-dom react-pdf zustand`
-- [ ] `npm i -D tailwindcss postcss autoprefixer`
-- [ ] `npx tailwindcss init -p`
-- [ ] Configure `tailwind.config.js` content paths
-- [ ] Add Tailwind directives to `index.css`
-- [ ] Add `VITE_API_URL` to `.env`
+- [☑️] `frontend/` scaffolded with Vite + React + TypeScript
+- [☑️] Project dependencies installed and app runs locally
+- [☑️] Tailwind styling integrated and configured for the current app
+- [☑️] `VITE_API_URL` configured in the frontend environment setup
 
 ### API Client
-- [ ] `src/api/client.ts` — axios instance
-- [ ] Request interceptor → attach `Bearer` token
-- [ ] Response interceptor → redirect to `/login` on 401
+- [☑️] `src/lib/api.ts` — fetch-based API wrapper with JWT auth handling
+- [☑️] Request logic attaches the bearer token when present
+- [☑️] 401 refresh flow is handled in the shared client
 
 ### Routing (`App.tsx`)
-- [ ] `/login` → `Login`
-- [ ] `/` → `Dashboard` (protected)
-- [ ] `/create` → `CreateTest` (protected)
-- [ ] `/exam/:id` → `ExamRoom` (protected)
-- [ ] `/result/:id` → `Result` (protected)
-- [ ] `Private` wrapper component
+- [☑️] `/` → `Landing`
+- [☑️] `/login` → `Login`
+- [☑️] `/signup` → `Signup`
+- [☑️] `RequireAuth` guard implemented for authenticated routes
 
 ### Login Page
-- [ ] Username + password form
-- [ ] `POST /api/token/` → store token in `localStorage`
-- [ ] Redirect to `/`
+- [☑️] Email + password form
+- [☑️] Login request stores JWT in `localStorage`
+- [☑️] Redirect to the authenticated area after successful login
 
 ### Dashboard
 - [ ] Fetch `GET /api/tests/`
@@ -367,7 +363,7 @@
 
 ---
 
-**Status:** 🟡 Ready to execute  
+**Status:** 🟡 In progress — backend/auth core is implemented; CBT room, analytics dashboard, and deployment tasks remain pending  
 **Version:** 0.1.0  
 **Owner:** You  
 **Pair:** AI

@@ -6,8 +6,8 @@ import { AuthField } from "../components/AuthField";
 import { AuthBanner } from "../components/AuthBanner";
 import { AuthCard } from "../components/AuthCard";
 import { AuthLayout } from "../layouts/AuthLayout";
-import { ApiError, type FieldErrors } from "../lib/api";
-import { register } from "../lib/auth";
+import { ApiError, type FieldErrors } from "../api/api";
+import { register } from "../api/auth";
 
 export default function Signup() {
   const navigate = useNavigate();

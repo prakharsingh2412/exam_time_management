@@ -1,8 +1,10 @@
 from django.utils import timezone
 from rest_framework import viewsets, status
+from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db.models import Max, Avg, Count, Q
 
 from .models import Test, Attempt
 from .parser import extract_answer_key
@@ -14,6 +16,7 @@ from .serializers import (
     AttemptSerializer,
     SubmitSerializer,
 )
+from core.mixins import EnvelopeResponseMixin
 
 
 class TestViewSet(viewsets.ModelViewSet):
@@ -158,5 +161,53 @@ class AttemptViewSet(viewsets.ModelViewSet):
                     attempt, context={"request": request}
                 ).data,
                 "analytics": analytics,
+            }
+        )
+
+
+class DashboardSummaryView(EnvelopeResponseMixin, APIView):
+    """
+    GET /api/dashboard/summary/
+    Returns aggregate stats + recent activity for the logged-in user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        tests = Test.objects.filter(owner=user)
+        attempts = Attempt.objects.filter(user=user, submitted_at__isnull=False)
+
+        # Per-test stats
+        recent_attempts = (
+            attempts.select_related("test")
+            .order_by("-submitted_at")[:5]
+        )
+
+        best = attempts.aggregate(best=Max("score"))["best"] or 0
+        avg = attempts.aggregate(avg=Avg("score"))["avg"] or 0
+        accuracy_avg = (
+            attempts.aggregate(
+                a=Avg("correct") * 100.0 / (Avg("correct") + Avg("wrong") + 1)
+            )["a"]
+            or 0
+        )
+
+        return self.success_response(
+            data={
+                "stats": {
+                    "total_tests": tests.count(),
+                    "total_attempts": attempts.count(),
+                    "best_score": float(best),
+                    "avg_score": round(float(avg), 2),
+                    "avg_accuracy": round(float(accuracy_avg), 1),
+                },
+                "recent_attempts": AttemptSerializer(
+                    recent_attempts, many=True, context={"request": request}
+                ).data,
+                "tests": TestSerializer(
+                    tests.order_by("-created_at")[:10],
+                    many=True,
+                    context={"request": request},
+                ).data,
             }
         )
