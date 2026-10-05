@@ -109,13 +109,11 @@ export default function ExamRoom() {
     if (!test) return;
     if (n < 1 || n > test.total_questions) return;
     setCurrent(n);
-    // Mark this question as visited (used by palette to show "seen but not answered")
     setVisited((prev) => new Set(prev).add(n));
   }
 
   function selectOption(letter: string) {
     setResponses((prev) => ({ ...prev, [String(current)]: letter }));
-    // Selecting an option implies the question was visited
     setVisited((prev) => new Set(prev).add(current));
   }
 
@@ -206,6 +204,15 @@ export default function ExamRoom() {
   const selected = responses[String(current)];
   const isLow = remaining < 60;
 
+  // ── PDF src guard ──
+  // Only allow relative /media/... paths. Absolute URLs from an old
+  // serializer, or a bare "/", would resolve to the app root and hit
+  // Vite's `X-Frame-Options: DENY`, producing a confusing frame error.
+  const pdfSrc =
+    test.pdf_url && test.pdf_url.startsWith("/media/")
+      ? test.pdf_url
+      : undefined;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       {/* Top bar */}
@@ -262,10 +269,10 @@ export default function ExamRoom() {
               </button>
             </div>
 
-            {test.pdf_url ? (
+            {pdfSrc ? (
               <iframe
                 title="Question paper"
-                src={test.pdf_url}
+                src={pdfSrc}
                 className="w-full h-[60vh] rounded-lg border border-slate-800 bg-slate-950"
               />
             ) : (

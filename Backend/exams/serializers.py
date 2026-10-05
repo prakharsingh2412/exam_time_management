@@ -22,9 +22,8 @@ class TestSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "pdf_url", "answer_key"]
 
     def get_pdf_url(self, obj):
-        request = self.context.get("request")
-        if obj.pdf and request:
-            return request.build_absolute_uri(obj.pdf.url)
+        if obj.pdf:
+            return obj.pdf.url   
         return None
 
 
