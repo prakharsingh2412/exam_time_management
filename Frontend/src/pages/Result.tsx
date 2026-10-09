@@ -1,4 +1,3 @@
-// src/pages/Result.tsx
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiWithAuth, ApiError } from "../api/api";

@@ -1,44 +1,82 @@
+
+from decimal import Decimal
+from django.core.cache import cache
 from django.utils import timezone
+from django.db.models import Max, Avg
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.db.models import Max, Avg, Count, Q
 
-from .models import Test, Attempt
-from .parser import extract_answer_key
+from .models import Test, Question, Attempt
+from .parsers import extract_answer_key, parse_test_pdf
 from .permissions import IsOwnerStrict
 from .scoring import score_attempt, build_time_analytics
 from .serializers import (
-    TestSerializer,
+    TestPublicSerializer,
+    TestAdminSerializer,
     AnswerKeySerializer,
+    QuestionPublicSerializer,
+    QuestionAdminSerializer,
     AttemptSerializer,
     SubmitSerializer,
 )
 from core.mixins import EnvelopeResponseMixin
 
 
+# ─────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────
+
+def _trigger_parse(test: Test) -> None:
+    test.parsing_status = "pending"
+    test.save(update_fields=["parsing_status"])
+
+    try:
+        from .tasks import parse_test_pdf_task
+        parse_test_pdf_task.delay(test.id)
+    except Exception:
+        import threading
+        threading.Thread(
+            target=parse_test_pdf, args=(test,), daemon=True
+        ).start()
+
+# ─────────────────────────────────────────────────────────────
+# Tests
+# ─────────────────────────────────────────────────────────────
+
 class TestViewSet(viewsets.ModelViewSet):
     """
     CRUD for the logged-in user's tests.
 
-    POST /api/tests/                -> create test (multipart, includes pdf)
-    GET  /api/tests/                -> list
-    GET  /api/tests/{id}/           -> detail
-    PATCH /api/tests/{id}/answer-key/  -> manual answer-key override
+    POST   /api/tests/                     -> create (multipart, includes pdf)
+    GET    /api/tests/                     -> list
+    GET    /api/tests/{id}/                -> detail
+    PATCH  /api/tests/{id}/answer-key/     -> manual answer-key override
+    POST   /api/tests/{id}/reparse/        -> re-run the PDF parser
+    GET    /api/tests/{id}/exam-payload/   -> test + questions (cached)
+    GET    /api/tests/{id}/questions/      -> questions only (cached list)
     """
 
-    serializer_class = TestSerializer
     permission_classes = [IsAuthenticated, IsOwnerStrict]
 
     def get_queryset(self):
         return Test.objects.filter(owner=self.request.user)
 
+    def get_serializer_class(self):
+        # Staff (or owner) sees answer_key; examinees do not.
+        # In this app, "owner" is the only one who creates tests, so the
+        # owner always gets the admin serializer here.
+        return TestAdminSerializer
+
+    # ── create ───────────────────────────────────────────────
+
     def perform_create(self, serializer):
         test = serializer.save(owner=self.request.user)
 
-        # Best-effort answer-key extraction on upload
+        # Best-effort answer-key extraction on upload (unrelated to
+        # question parsing, but useful).
         if not test.answer_key:
             try:
                 extracted = extract_answer_key(
@@ -48,8 +86,12 @@ class TestViewSet(viewsets.ModelViewSet):
                     test.answer_key = extracted
                     test.save(update_fields=["answer_key"])
             except Exception:
-                # Silent fallback: user can PATCH the key manually
-                pass
+                pass  # user can PATCH the key later
+
+        # Now parse the questions themselves
+        _trigger_parse(test)
+
+    # ── answer key ───────────────────────────────────────────
 
     @action(
         detail=True,
@@ -62,8 +104,71 @@ class TestViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(test, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        # Answer key changed → grading output for existing attempts is stale.
+        # (Optional) also bust the payload cache since `correct` might be
+        # copied into Question rows by the parser.
+        cache.delete(f"test:{test.id}:exam-payload:v1")
+
         return Response(serializer.data)
 
+    # ── reparse ──────────────────────────────────────────────
+
+    @action(detail=True, methods=["post"], url_path="reparse")
+    def reparse(self, request, pk=None):
+        test = self.get_object()
+        _trigger_parse(test)
+        return Response({"status": "queued", "parsing_status": test.parsing_status})
+
+    # ── exam payload (single round-trip) ─────────────────────
+
+    @action(detail=True, methods=["get"], url_path="exam-payload")
+    def exam_payload(self, request, pk=None):
+        cache_key = f"test:{pk}:exam-payload:v1"
+        data = cache.get(cache_key)
+
+        if data is None:
+            test = self.get_object()
+            if test.parsing_status != "done":
+                return Response(
+                    {
+                        "detail": "Test is not ready yet.",
+                        "parsing_status": test.parsing_status,
+                        "parsing_error": test.parsing_error,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            data = {
+                "test": TestAdminSerializer(test).data,
+                "questions": list(
+                    test.questions.order_by("number").values(
+                        "number",
+                        "text",
+                        "option_a",
+                        "option_b",
+                        "option_c",
+                        "option_d",
+                    )
+                ),
+            }
+            cache.set(cache_key, data, timeout=60 * 60)
+
+        return Response(data)
+
+    # ── questions only ───────────────────────────────────────
+
+    @action(detail=True, methods=["get"], url_path="questions")
+    def questions(self, request, pk=None):
+        test = self.get_object()
+        qs = test.questions.order_by("number")
+        ser = QuestionAdminSerializer(qs, many=True)
+        return Response(ser.data)
+
+
+# ─────────────────────────────────────────────────────────────
+# Attempts
+# ─────────────────────────────────────────────────────────────
 
 class AttemptViewSet(viewsets.ModelViewSet):
     """
@@ -102,11 +207,22 @@ class AttemptViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if test.parsing_status != "done":
+            return Response(
+                {
+                    "detail": "Test is still being prepared.",
+                    "parsing_status": test.parsing_status,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
         attempt = Attempt.objects.create(test=test, user=request.user)
         return Response(
             AttemptSerializer(attempt, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
+
+    # ── submit ───────────────────────────────────────────────
 
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None):
@@ -145,6 +261,8 @@ class AttemptViewSet(viewsets.ModelViewSet):
             }
         )
 
+    # ── report ───────────────────────────────────────────────
+
     @action(detail=True, methods=["get"])
     def report(self, request, pk=None):
         attempt = self.get_object()
@@ -165,6 +283,10 @@ class AttemptViewSet(viewsets.ModelViewSet):
         )
 
 
+# ─────────────────────────────────────────────────────────────
+# Dashboard
+# ─────────────────────────────────────────────────────────────
+
 class DashboardSummaryView(EnvelopeResponseMixin, APIView):
     """
     GET /api/dashboard/summary/
@@ -177,7 +299,6 @@ class DashboardSummaryView(EnvelopeResponseMixin, APIView):
         tests = Test.objects.filter(owner=user)
         attempts = Attempt.objects.filter(user=user, submitted_at__isnull=False)
 
-        # Per-test stats
         recent_attempts = (
             attempts.select_related("test")
             .order_by("-submitted_at")[:5]
@@ -204,7 +325,7 @@ class DashboardSummaryView(EnvelopeResponseMixin, APIView):
                 "recent_attempts": AttemptSerializer(
                     recent_attempts, many=True, context={"request": request}
                 ).data,
-                "tests": TestSerializer(
+                "tests": TestAdminSerializer(
                     tests.order_by("-created_at")[:10],
                     many=True,
                     context={"request": request},

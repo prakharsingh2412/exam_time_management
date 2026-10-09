@@ -16,6 +16,20 @@ class Test(models.Model):
     negative_marks = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     pdf = models.FileField(upload_to="pdfs/")
     answer_key = models.JSONField(default=dict, blank=True)
+
+    parsing_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("pending", "Pending"),
+            ("parsing", "Parsing"),
+            ("done", "Done"),
+            ("failed", "Failed"),
+        ],
+        default="pending",
+        db_index=True,
+    )
+    parsing_error = models.TextField(blank=True, default="")
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -24,7 +38,31 @@ class Test(models.Model):
     def __str__(self):
         return self.name
 
-    # NOTE: owner_id is auto-provided by Django (FK column) — do not override.
+
+class Question(models.Model):
+    test = models.ForeignKey(
+        Test, related_name="questions", on_delete=models.CASCADE
+    )
+    number = models.PositiveIntegerField()
+    text = models.TextField()
+    option_a = models.CharField(max_length=1000, blank=True, default="")
+    option_b = models.CharField(max_length=1000, blank=True, default="")
+    option_c = models.CharField(max_length=1000, blank=True, default="")
+    option_d = models.CharField(max_length=1000, blank=True, default="")
+    correct = models.CharField(
+        max_length=1,
+        choices=[("A", "A"), ("B", "B"), ("C", "C"), ("D", "D")],
+        blank=True,
+        default="",
+    )
+
+    class Meta:
+        unique_together = ("test", "number")
+        ordering = ["number"]
+        indexes = [models.Index(fields=["test", "number"])]
+
+    def __str__(self):
+        return f"{self.test_id} #{self.number}"
 
 
 class Attempt(models.Model):
@@ -55,5 +93,4 @@ class Attempt(models.Model):
 
     @property
     def owner_id(self):
-        """Alias so IsOwnerStrict works uniformly (Attempt.user_id → owner_id)."""
         return self.user_id
